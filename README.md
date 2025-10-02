@@ -48,3 +48,9 @@ src/
 ├─ types.ts # TypeScript types
 │
 └─ index.css # Tailwind CSS imports
+
+## API Limitations
+The free tier of Reqres API (with `x-api-key: reqres-free-v1`) has the following limitations:
+- `POST /users` creates a user with an `id` and `createdAt`, but data is not persistent and stored locally.
+- `PUT /users/{id}` and `DELETE /users/{id}` are not supported.
+- User details for locally created users (IDs > 12) are retrieved from localStorage, while IDs 1-12 are fetched from paginated lists.

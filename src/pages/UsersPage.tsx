@@ -3,8 +3,12 @@ import api from '../api/reqres';
 import type { ApiUser, UsersListResponse } from '../types';
 import UserCard from '../components/UserCard';
 import UserForm from '../components/UserForm';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const UsersPage: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+  const nav = useNavigate();
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -19,40 +23,70 @@ const UsersPage: React.FC = () => {
       setUsers(res.data.data);
       setPage(res.data.page);
       setTotalPages(res.data.total_pages);
+    } catch (err) {
+      console.error('Failed to fetch users:', err);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      nav('/login');
+      return;
+    }
     fetchUsers(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isAuthenticated, nav]);
 
-  const handleCreate = async (payload: { name: string; job: string }) => {
+const handleCreate = async (payload: { name: string; job: string }) => {
+  try {
     const res = await api.post('/users', payload);
-    const newUser: ApiUser = {
-      id: Number(res.data.id) || Date.now(),
-      email: `${payload.name.replace(/\s+/g, '').toLowerCase()}@local.test`,
-      first_name: payload.name.split(' ')[0] || payload.name,
-      last_name: payload.name.split(' ').slice(1).join(' ') || '',
-      avatar: undefined,
-    };
-    setUsers(prev => [newUser, ...prev]);
-    setShowForm(false);
+    console.log('API Response:', res.data);
+    if (res.data && res.data.id) {
+      const newUser: ApiUser = {
+        id: res.data.id || Date.now(),
+        email: `${payload.name.replace(/\s+/g, '').toLowerCase()}@local.test`,
+        first_name: payload.name.split(' ')[0] || payload.name,
+        last_name: payload.name.split(' ').slice(1).join(' ') || '',
+        avatar: undefined,
+      };
+      setUsers(prev => [newUser, ...prev]);
+      const localUsers = JSON.parse(localStorage.getItem('localUsers') || '[]');
+      console.log('Before Save - localUsers:', localUsers);
+      localStorage.setItem('localUsers', JSON.stringify([...localUsers, newUser]));
+      console.log('After Save - localUsers:', JSON.parse(localStorage.getItem('localUsers') || '[]'));
+      setShowForm(false);
+      alert('User created locally. Data is not persistent due to API limitations.');
+    } else {
+      throw new Error('Invalid response from API');
+    }
+  } catch (err) {
+    console.error('Failed to create user:', err);
+    alert('Failed to create user. API may not support persistent data.');
   }
+};
 
   const handleUpdate = async (id: number, payload: { name: string; job: string }) => {
-    await api.put(`/users/${id}`, payload);
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, first_name: payload.name.split(' ')[0] || payload.name, last_name: payload.name.split(' ').slice(1).join(' ') || '' } : u));
-    setEditingUser(null);
-    setShowForm(false);
-  }
+    try {
+      await api.put(`/users/${id}`, payload);
+      alert('Update not supported in free API tier.');
+    } catch (err) {
+      console.error('Failed to update user:', err);
+      alert('Update is not supported by the free API.');
+    }
+  };
 
   const handleDelete = async (id: number) => {
-    await api.delete(`/users/${id}`);
-    setUsers(prev => prev.filter(u => u.id !== id));
-  }
+    if (window.confirm('Are you sure you want to delete this user?')) {
+      try {
+        await api.delete(`/users/${id}`);
+        alert('Delete not supported in free API tier.');
+      } catch (err) {
+        console.error('Failed to delete user:', err);
+        alert('Delete is not supported by the free API.');
+      }
+    }
+  };
 
   return (
     <div className="container mx-auto p-4">
@@ -60,6 +94,7 @@ const UsersPage: React.FC = () => {
         <h1 className="text-xl font-semibold">Users</h1>
         <div className="flex items-center gap-2">
           <button onClick={() => { setEditingUser(null); setShowForm(true); }} className="px-3 py-1 rounded bg-green-500 text-white">Add User</button>
+          
         </div>
       </div>
 
@@ -88,7 +123,7 @@ const UsersPage: React.FC = () => {
         />
       )}
     </div>
-  )
-}
+  );
+};
 
 export default UsersPage;

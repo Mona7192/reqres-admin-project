@@ -18,7 +18,6 @@ const Navbar: React.FC = () => {
         <div className="flex items-center gap-3">
           {isAuthenticated ? (
             <>
-              <Link to="/" className="text-sm">Users</Link>
               <button onClick={handleLogout} className="px-3 py-1 rounded-md border text-sm">Logout</button>
             </>
           ) : (
